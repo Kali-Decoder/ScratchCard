@@ -16,6 +16,13 @@ type LeaderboardEntry = {
   lastActivity: string;
 };
 
+type PlatformStats = {
+  totalUsers: number;
+  totalScratchCards: number;
+  totalTransactions: number;
+  totalClaimedWei: string;
+};
+
 const formatEth = (value: bigint, digits = 4) => {
   const eth = Number(ethers.formatEther(value));
   if (!Number.isFinite(eth)) return "0";
@@ -25,15 +32,33 @@ const formatEth = (value: bigint, digits = 4) => {
 export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(5);
+  const [totalPages, setTotalPages] = useState(1);
+  const [platformStats, setPlatformStats] = useState<PlatformStats>({
+    totalUsers: 0,
+    totalScratchCards: 0,
+    totalTransactions: 0,
+    totalClaimedWei: "0",
+  });
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = async (targetPage = page) => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/leaderboard?limit=50", { cache: "no-store" });
+      const response = await fetch(
+        `/api/leaderboard?page=${targetPage}&pageSize=${pageSize}`,
+        { cache: "no-store" }
+      );
       if (!response.ok) return;
       const json = await response.json();
       if (json?.ok && Array.isArray(json.leaderboard)) {
         setLeaderboard(json.leaderboard as LeaderboardEntry[]);
+        if (json?.platformStats) {
+          setPlatformStats(json.platformStats as PlatformStats);
+        }
+        if (json?.pagination?.totalPages) {
+          setTotalPages(Number(json.pagination.totalPages) || 1);
+        }
       }
     } catch (error) {
       console.warn("Leaderboard fetch failed:", error);
@@ -43,10 +68,10 @@ export default function LeaderboardPage() {
   };
 
   useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 10000);
+    fetchLeaderboard(page);
+    const interval = setInterval(() => fetchLeaderboard(page), 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [page]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -97,7 +122,7 @@ export default function LeaderboardPage() {
             </div>
           </div>
           <button
-            onClick={fetchLeaderboard}
+            onClick={() => fetchLeaderboard(page)}
             className="rounded-lg bg-monad-purple/10 p-2 text-monad-purple transition-colors hover:bg-monad-purple/20"
             title="Refresh leaderboard"
           >
@@ -109,6 +134,27 @@ export default function LeaderboardPage() {
           <Link href="/" className="text-sm text-monad-purple hover:underline">
             ← Back to Game
           </Link>
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-card-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Number of Users</p>
+            <p className="mt-2 text-2xl font-bold text-white">{platformStats.totalUsers}</p>
+          </div>
+          <div className="rounded-xl border border-card-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Total Scratch Cards</p>
+            <p className="mt-2 text-2xl font-bold text-white">{platformStats.totalScratchCards}</p>
+          </div>
+          <div className="rounded-xl border border-card-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Total Transactions</p>
+            <p className="mt-2 text-2xl font-bold text-white">{platformStats.totalTransactions}</p>
+          </div>
+          <div className="rounded-xl border border-card-border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Total STT Claimed</p>
+            <p className="mt-2 text-2xl font-bold text-white">
+              {formatEth(BigInt(platformStats.totalClaimedWei), 2)} STT
+            </p>
+          </div>
         </div>
 
         {leaderboard.length === 0 ? (
@@ -136,7 +182,9 @@ export default function LeaderboardPage() {
                       key={`${entry.walletAddress}-${index}`}
                       className="border-b border-card-border/70 text-sm last:border-b-0 hover:bg-white/[0.03]"
                     >
-                      <td className="px-5 py-4 text-xl font-bold text-white">#{index + 1}</td>
+                      <td className="px-5 py-4 text-xl font-bold text-white">
+                        #{(page - 1) * pageSize + index + 1}
+                      </td>
                       <td className="px-5 py-4 text-lg font-semibold">
                         <Link href={`/profile/${entry.walletAddress}`} className="text-monad-purple hover:underline">
                           {shortAddress}
@@ -215,6 +263,26 @@ export default function LeaderboardPage() {
             </table>
           </div>
         )}
+
+        <div className="mt-6 flex items-center justify-between rounded-xl border border-card-border bg-card p-4">
+          <button
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
+            disabled={page <= 1 || isLoading}
+            className="rounded-lg border border-card-border px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <p className="text-sm text-gray-300">
+            Page {page} of {totalPages}
+          </p>
+          <button
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+            disabled={page >= totalPages || isLoading}
+            className="rounded-lg border border-card-border px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
