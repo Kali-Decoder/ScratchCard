@@ -39,6 +39,7 @@ npm install
 npm run scratch-deploy
 npm run scratach-subscribe
 npm run test-scratch
+npm run batch-scratch
 npm run scratch-manage -- events
 ```
 
@@ -46,7 +47,21 @@ npm run scratch-manage -- events
 - `scratch-deploy`: deploys with single constructor arg `scratchPrice`
 - `scratch-subscribe`: creates Somnia reactivity subscription for `ScratchRequested`
 - `test-scratch`: sends scratch tx, waits for reactive settlement, claims pending
+- `batch-scratch`: generates wallets, funds each, then loops scratch/claim per wallet until balance is too low for next round
 - `scratch-manage`: inspect/cancel subscriptions + check key events
+
+### Batch Scratch Env (optional)
+```env
+BATCH_WALLET_COUNT=10
+BATCH_FUND_PER_WALLET_STT=2
+BATCH_GAS_RESERVE_STT=0.01
+BATCH_MAX_ROUNDS_PER_WALLET=200
+BATCH_REACTIVITY_POLLS=20
+BATCH_REACTIVITY_POLL_MS=2000
+BATCH_SAVE_WALLETS=false
+```
+
+If you set `BATCH_SAVE_WALLETS=true`, generated wallet private keys are saved to a local JSON file.
 
 ## Explorer
 - Address: `https://shannon-explorer.somnia.network/address/<contract>`

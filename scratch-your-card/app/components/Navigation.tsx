@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Loader2, Settings, Shield, Trophy, Wallet } from "lucide-react";
+import { Loader2, Rocket, Settings, Shield, Trophy, Wallet } from "lucide-react";
 import { ethers } from "ethers";
 import { useReactivityStatus } from "../contexts/ReactivityStatusContext";
 import { useToastContext } from "../contexts/ToastContext";
 import { SCRATCH_CARD_ABI, SCRATCH_CARD_ADDRESS } from "../config/scratch_game_config";
+import { runAdminBatchAction } from "@/app/actions/admin-batch-scratch.action";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -23,6 +24,7 @@ export function Navigation() {
   const [isCheckingOwner, setIsCheckingOwner] = useState(false);
   const [isWithdrawingAll, setIsWithdrawingAll] = useState(false);
   const [isSettingPrice, setIsSettingPrice] = useState(false);
+  const [isRunningBatch, setIsRunningBatch] = useState(false);
 
   const normalizedAccount = useMemo(() => account.toLowerCase(), [account]);
   const normalizedOwner = useMemo(() => ownerAddress.toLowerCase(), [ownerAddress]);
@@ -146,6 +148,77 @@ export function Navigation() {
     }
   };
 
+  const runAdminBatch = async () => {
+    if (!isOwner) {
+      showError("Admin action blocked: connected wallet is not contract owner");
+      return;
+    }
+
+    const walletInput = window.prompt("Batch wallet count (default: 10)", "10");
+    if (walletInput === null) return;
+
+    const roundsInput = window.prompt("Max rounds per wallet (default: 10)", "10");
+    if (roundsInput === null) return;
+
+    const walletCount = Number(walletInput.trim() || "10");
+    const maxRoundsPerWallet = Number(roundsInput.trim() || "10");
+    const options = {
+      walletCount,
+      maxRoundsPerWallet,
+      reactivityPolls: 20,
+      reactivityPollMs: 2000,
+      saveWallets: false,
+    };
+
+    if (!Number.isInteger(walletCount) || walletCount <= 0) {
+      showError("Wallet count must be a positive integer");
+      return;
+    }
+
+    if (!Number.isInteger(maxRoundsPerWallet) || maxRoundsPerWallet <= 0) {
+      showError("Max rounds must be a positive integer");
+      return;
+    }
+
+    try {
+      setIsRunningBatch(true);
+      const provider = getProvider();
+      const signer = await provider.getSigner();
+      const requester = (await signer.getAddress()).toLowerCase();
+      const requestedAt = Date.now();
+      const message = [
+        "scratch-your-card admin batch run",
+        `requester:${requester}`,
+        `requestedAt:${requestedAt}`,
+        `walletCount:${options.walletCount}`,
+        `maxRoundsPerWallet:${options.maxRoundsPerWallet}`,
+        `reactivityPolls:${options.reactivityPolls}`,
+        `reactivityPollMs:${options.reactivityPollMs}`,
+        `saveWallets:${options.saveWallets}`,
+        `contract:${SCRATCH_CARD_ADDRESS.toLowerCase()}`,
+      ].join("\n");
+      const signature = await signer.signMessage(message);
+
+      const json = await runAdminBatchAction({
+        requester,
+        requestedAt,
+        signature,
+        options,
+      });
+      if (!json?.ok) {
+        throw new Error(json?.error || "Batch run failed");
+      }
+
+      showSuccess(
+        `Batch run complete: scratches=${json.result.totalScratches}, wallets=${json.result.walletCount}`
+      );
+    } catch (error: any) {
+      showError(error?.shortMessage || error?.message || "Failed to run admin batch");
+    } finally {
+      setIsRunningBatch(false);
+    }
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -187,6 +260,15 @@ export function Navigation() {
                 >
                   {isWithdrawingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wallet className="h-3 w-3" />}
                   Withdraw Profit
+                </button>
+                <button
+                  onClick={runAdminBatch}
+                  disabled={isRunningBatch}
+                  className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Owner-only: run backend batch scratch script and save txs to MongoDB"
+                >
+                  {isRunningBatch ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+                  Run Batch
                 </button>
                 <div className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300">
                   <Shield className="h-3 w-3" />

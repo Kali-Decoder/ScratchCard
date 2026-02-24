@@ -5,6 +5,7 @@
     "create-subscription": "npx ts-node scripts/create-subscription.ts",
     "manage-subscription": "npx ts-node scripts/manage-subscription.ts",
     "test-scratch": "hardhat run scripts/test-scratch.ts --network somniaTestnet",
+    "batch-scratch": "hardhat run scripts/batch-scratch-wallets.ts --network somniaTestnet",
     "test-chest": "npm run test-scratch",
     "scratch-deploy": "hardhat run scripts/scratch-deploy.ts --network somniaTestnet",
     "scratch-manage": "npx ts-node scripts/scratch-manage.ts",

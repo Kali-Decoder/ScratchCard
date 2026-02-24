@@ -1,51 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
-import { Transaction } from "@/lib/models/Transaction";
+import { upsertTransactionLog } from "@/app/services/transaction-log.service";
 
 export const runtime = "nodejs";
 
-const VALID_ACTIONS = new Set(["scratch_reward", "claim"]);
-
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase();
     const body = await request.json();
 
-    const walletAddress = String(body?.walletAddress || "").trim().toLowerCase();
-    const txHash = String(body?.txHash || "").trim().toLowerCase();
-    const action = String(body?.action || "").trim();
-    const amountWei = String(body?.amountWei || "").trim();
-    const contractAddress = String(body?.contractAddress || "").trim().toLowerCase();
-    const chainId = Number(body?.chainId);
-    const occurredAt = body?.occurredAt ? new Date(body.occurredAt) : new Date();
-
-    if (!walletAddress || !txHash || !amountWei || !contractAddress || !Number.isFinite(chainId)) {
-      return NextResponse.json(
-        { ok: false, error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    if (!VALID_ACTIONS.has(action)) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid action. Use scratch_reward or claim." },
-        { status: 400 }
-      );
-    }
-
-    await Transaction.updateOne(
-      { txHash },
-      {
-        walletAddress,
-        txHash,
-        action,
-        amountWei,
-        contractAddress,
-        chainId,
-        occurredAt,
-      },
-      { upsert: true }
-    );
+    await upsertTransactionLog({
+      walletAddress: String(body?.walletAddress || ""),
+      txHash: String(body?.txHash || ""),
+      action: String(body?.action || "") as "scratch_reward" | "claim",
+      amountWei: String(body?.amountWei || ""),
+      contractAddress: String(body?.contractAddress || ""),
+      chainId: Number(body?.chainId),
+      occurredAt: body?.occurredAt ? new Date(body.occurredAt) : new Date(),
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {
