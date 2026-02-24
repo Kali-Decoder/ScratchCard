@@ -3,10 +3,14 @@ export const SCRATCH_CARD_ADDRESS =
   "0x14c1386e45401Fbbed5af46E67E7B602C519E972";
 
 export const SCRATCH_CARD_ABI = [
+  "function owner() view returns (address)",
   "function scratchPrice() view returns (uint256)",
   "function totalPendingRewards() view returns (uint256)",
   "function scratchCard() payable",
   "function claimRewards(uint256 amount)",
+  "function setScratchPrice(uint256 newPrice)",
+  "function withdrawProfit(uint256 amount)",
+  "function withdrawAllProfit()",
   "function pendingRewards(address) view returns (uint256)",
   "function getPlayerStats(address) view returns (uint256 pending,uint256 claimed,uint256 totalWon,uint256 scratches)",
   "event ScratchRequested(address indexed player,uint256 scratchId,uint256 playerNonce)",
