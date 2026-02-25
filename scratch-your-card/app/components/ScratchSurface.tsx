@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ScratchSurfaceProps {
   isEnabled: boolean;
@@ -25,11 +25,37 @@ export function ScratchSurface({
 }: ScratchSurfaceProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const brushAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const moveCountRef = useRef(0);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const stopBrushSound = useCallback(() => {
+    const audio = brushAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+  }, []);
+
+  const playBrushSound = useCallback(async () => {
+    if (!isEnabled || isRevealed) return;
+
+    let audio = brushAudioRef.current;
+    if (!audio) {
+      audio = new Audio("/sounds/brush_sfx.wav");
+      audio.loop = true;
+      audio.preload = "auto";
+      brushAudioRef.current = audio;
+    }
+
+    try {
+      await audio.play();
+    } catch {
+      // Ignore blocked autoplay errors; next user interaction will retry.
+    }
+  }, [isEnabled, isRevealed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -78,7 +104,20 @@ export function ScratchSurface({
     setIsPointerDown(false);
     lastPointRef.current = null;
     moveCountRef.current = 0;
-  }, [resetKey, isEnabled]);
+    stopBrushSound();
+  }, [resetKey, isEnabled, stopBrushSound]);
+
+  useEffect(() => {
+    if (!isEnabled || isRevealed) {
+      stopBrushSound();
+    }
+  }, [isEnabled, isRevealed, stopBrushSound]);
+
+  useEffect(() => {
+    return () => {
+      stopBrushSound();
+    };
+  }, [stopBrushSound]);
 
   const getPoint = (clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
@@ -168,6 +207,7 @@ export function ScratchSurface({
           if (!point) return;
           event.currentTarget.setPointerCapture(event.pointerId);
           setIsPointerDown(true);
+          void playBrushSound();
           lastPointRef.current = point;
           scratchStroke(point, point);
           updateProgress();
@@ -187,11 +227,19 @@ export function ScratchSurface({
         }}
         onPointerUp={() => {
           setIsPointerDown(false);
+          stopBrushSound();
           lastPointRef.current = null;
           updateProgress();
         }}
         onPointerLeave={() => {
           setIsPointerDown(false);
+          stopBrushSound();
+          lastPointRef.current = null;
+          updateProgress();
+        }}
+        onPointerCancel={() => {
+          setIsPointerDown(false);
+          stopBrushSound();
           lastPointRef.current = null;
           updateProgress();
         }}

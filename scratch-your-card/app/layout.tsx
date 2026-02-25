@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { FontLoader } from "./components/FontLoader";
 import { Navigation } from "./components/Navigation";
 import { BackgroundConfetti } from "./components/BackgroundConfetti";
+import { GlobalClickSound } from "./components/GlobalClickSound";
 
 // Main font for UI text
 const inter = Inter({ 
@@ -48,6 +49,7 @@ export default function RootLayout({
       >
         <Providers>
           <FontLoader />
+          <GlobalClickSound />
           <Navigation />
           <BackgroundConfetti />
           {/* Subtle Ambient Background Glow */}

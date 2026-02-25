@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { ethers } from "ethers";
 import AnimatedNumbers from "react-animated-numbers";
 import Image from "next/image";
@@ -74,6 +74,9 @@ const formatEth = (value: bigint, digits = 4) => {
 };
 
 export default function Home() {
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const claimAudioRef = useRef<HTMLAudioElement | null>(null);
+  const loseAudioRef = useRef<HTMLAudioElement | null>(null);
   const [account, setAccount] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number | null>(null);
@@ -166,6 +169,54 @@ export default function Home() {
 
     setStickerPlacements(placements);
   }, []);
+
+  const playWinSound = async () => {
+    let audio = winAudioRef.current;
+    if (!audio) {
+      audio = new Audio("/sounds/horray_fireworks.wav");
+      audio.preload = "auto";
+      winAudioRef.current = audio;
+    }
+
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+    } catch {
+      // Ignore if browser blocks playback.
+    }
+  };
+
+  const playClaimSound = async () => {
+    let audio = claimAudioRef.current;
+    if (!audio) {
+      audio = new Audio("/sounds/cash_register_sfx.wav");
+      audio.preload = "auto";
+      claimAudioRef.current = audio;
+    }
+
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+    } catch {
+      // Ignore if browser blocks playback.
+    }
+  };
+
+  const playLoseSound = async () => {
+    let audio = loseAudioRef.current;
+    if (!audio) {
+      audio = new Audio("/sounds/oh_no.wav");
+      audio.preload = "auto";
+      loseAudioRef.current = audio;
+    }
+
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+    } catch {
+      // Ignore if browser blocks playback.
+    }
+  };
 
   const checkConnection = async () => {
     if (typeof window === "undefined" || !(window as any).ethereum) return;
@@ -476,6 +527,7 @@ export default function Home() {
         amountWei: claimAmount,
       });
 
+      void playClaimSound();
       showNotification("success", `Claimed ${formatEth(claimAmount)} STT`);
       await refreshAll();
     } catch (error: any) {
@@ -758,8 +810,10 @@ export default function Home() {
                   burstConfetti();
                   if (lastScratchResult) {
                     if (lastScratchResult.reward === ZERO_BI) {
+                      void playLoseSound();
                       showNotification("error", "😢 You got 0 STT this time.");
                     } else {
+                      void playWinSound();
                       showNotification("success", `You won ${formatEth(lastScratchResult.reward)} STT`);
                     }
                   }
