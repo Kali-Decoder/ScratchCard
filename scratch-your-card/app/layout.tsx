@@ -20,15 +20,29 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Scratch Card Game | Somnia Reactivity",
+  title: "Scratch Card Game ",
   description: "Scratch cards with Somnia on-chain reactivity. Submit a scratch request and watch rewards settle automatically.",
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "Scratch Card Game | Somnia Reactivity",
+    title: "Scratch Card Game ",
     description: "Scratch cards with Somnia on-chain reactivity. Submit a scratch request and watch rewards settle automatically.",
-    url: "https://scratch.somnia.network",
+    url: "https://scratch-card-dun.vercel.app/",
+    images: [
+      {
+        url: "/scratch-win-sticker-red.png",
+        width: 1200,
+        height: 630,
+        alt: "Scratch Card Game Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Scratch Card Game ",
+    description: "Scratch cards with Somnia on-chain reactivity. Submit a scratch request and watch rewards settle automatically.",
+    images: ["/scratch-win-sticker-red.png"],
   },
 };
 
